@@ -1,134 +1,100 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between four screens: title, play, paused and game over.
-//
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
-import { BEST_KEY, LIVES, STEP } from './config.js';
-import { createRandom } from './random.js';
-import { createWorld, EVENT_HIT, EVENT_OVER } from './world.js';
-import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
-import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
-import { stageShot } from './shots.js';
+// Bootstrap and screenshot setups for Solmaris Heat.
+// Normal load shows the start screen. The ?shot=<name> URLs place the game
+// in a real mid-action scene (used to take the entry's own screenshots);
+// they drive the same systems — traffic, police, missions and HUD — with a
+// fixed seed, never a staged picture.
 
-/** The longest frame the loop catches up on; a longer stall (a hidden tab) is dropped, not replayed. */
-const MAX_FRAME = 0.25;
-
-const params = new URLSearchParams(window.location.search);
-const shot = params.get('shot');
-const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-const seed = Number.isInteger(seedParam) ? seedParam : Math.floor(Math.random() * 4294967296);
+import { createGame, startStory, drawGame, updateGame, assignMission } from './game.js';
+import { makeCar } from './entities.js';
+import { Input } from './input.js';
 
 const canvas = document.getElementById('game');
-const status = document.getElementById('status');
-const world = createWorld(createRandom(seed));
-const renderer = createRenderer(canvas);
+const ctx = canvas.getContext('2d');
+const input = new Input(canvas);
+const params = new URLSearchParams(location.search);
+const shot = params.get('shot');
 
-function readBest() {
-  try {
-    return Number.parseInt(window.localStorage.getItem(BEST_KEY) ?? '0', 10) || 0;
-  } catch {
-    return 0;
+const G = createGame(input, 20261117);
+window.__solmaris = G;
+
+function snapCamera() {
+  const f = G.player.car || G.player;
+  G.cam.x = Math.max(0, Math.min(3840 - 1280, f.x - 640));
+  G.cam.y = Math.max(0, Math.min(2560 - 720, f.y - 360));
+}
+function putPlayerInCar(x, y, angle, speed, color) {
+  const car = G.cars.find((c) => c.kind === 'parked') || G.cars[0];
+  car.x = x; car.y = y; car.angle = angle; car.speed = speed; car.kind = 'player';
+  if (color) car.color = color;
+  G.player.car = car; G.player.x = x; G.player.y = y;
+  return car;
+}
+function addPolice(x, y, angle) {
+  const cop = makeCar(x, y, angle, 'police', G.rng);
+  G.cars.push(cop); return cop;
+}
+function settle(steps) { for (let i = 0; i < steps; i++) updateGame(G, 1 / 30); G.dialog = null; G.dialogQueue = []; }
+
+if (shot) {
+  G.state = 'play';
+  if (shot === 'cover') {
+    G.missionIndex = 2; assignMission(G);
+    G.cratesTaken = [0]; G.money = 1450; G.rep = 15;
+    putPlayerInCar(880, 880, 0, 165, '#e63946');
+    addPolice(700, 845, 0); addPolice(640, 905, 0.2);
+    G.wanted = 3; G.heatCool = 12;
+    G.player.x = 880; G.player.y = 880;
+  } else if (shot === 'foot') {
+    G.missionIndex = 0; assignMission(G);
+    G.dialog = ['Lina', 'Mara. You look almost retired. One week of driving — easy money.'];
+    G.dialogQueue = [];
+    G.player.x = 520; G.player.y = 612; G.money = 250;
+  } else if (shot === 'chase') {
+    G.missionIndex = 3; assignMission(G);
+    G.money = 2300; G.rep = 22;
+    putPlayerInCar(1080, 1252, 0, 215, '#3a86ff');
+    addPolice(1470, 1225, 0); addPolice(1420, 1290, 0.1); addPolice(1560, 1330, -0.3);
+    G.wanted = 4; G.heatCool = 12;
+  } else if (shot === 'beach') {
+    G.missionIndex = 4; assignMission(G);
+    G.missionTimer = 96; G.money = 3150; G.rep = 31;
+    putPlayerInCar(2620, 1648, 0, 185, '#ffd60a');
+    addPolice(2440, 1615, 0);
+    G.wanted = 2; G.heatCool = 12;
   }
+  G.dialog = shot === 'foot' ? G.dialog : null;
+  if (shot !== 'foot') G.dialogQueue = [];
+  snapCamera();
+  settle(shot === 'foot' ? 4 : 14);
+  // Re-stage the chase cleanly after the settle steps: the live systems move
+  // cars during those steps, so pin the final composition, heat and toast.
+  if (shot !== 'foot') {
+    const car = G.player.car;
+    const keep = shot === 'cover' ? 2 : shot === 'chase' ? 3 : 1;
+    const cops = G.cars.filter((c) => c.kind === 'police').slice(0, keep);
+    G.cars = G.cars.filter((c) => c.kind !== 'police' || cops.includes(c));
+    const spots = [[-195, -48], [-320, 22], [-235, 105]];
+    cops.forEach((cop, i) => {
+      const [dx, dy] = spots[i % spots.length];
+      cop.x = car.x + dx; cop.y = car.y + dy; cop.angle = 0; cop.speed = 150; cop.dead = false;
+    });
+    car.speed = shot === 'cover' ? 165 : 195;
+    G.wanted = shot === 'cover' ? 3 : shot === 'chase' ? 4 : 2;
+    G.heatCool = 12; G.bustMeter = 0; G.toast = ''; G.toastT = 0;
+    G.player.health = 100;
+  }
+  snapCamera();
+  if (shot === 'foot') G.dialog = ['Lina', 'Mara. You look almost retired. One week of driving — easy money.'];
 }
 
-function saveBest(value) {
-  try {
-    window.localStorage.setItem(BEST_KEY, String(value));
-  } catch {
-    // Storage can be off (private windows): the best score then lasts this visit only.
-  }
-}
-
-function runShot(name) {
-  const scene = stageShot(name, world);
-  let painted = 0;
-  function paint() {
-    renderer.draw(world.state, scene.screen, scene.best);
-    painted += 1;
-    if (painted < 2) requestAnimationFrame(paint);
-    else window.__shotReady = true;
-  }
-  requestAnimationFrame(paint);
-}
-
-function runGame() {
-  const input = createInput(canvas);
-  let screen = SCREEN_TITLE;
-  let best = readBest();
-  let accumulator = 0;
-  let last = performance.now();
-
-  // Screen readers (and anyone watching the page's text) hear the screen changes and each hit.
-  function announce(message) {
-    status.textContent = message;
-  }
-
-  function startGame() {
-    world.reset();
-    accumulator = 0;
-    screen = SCREEN_PLAY;
-    announce(`Playing. ${LIVES} lives.`);
-  }
-
-  function endGame() {
-    screen = SCREEN_OVER;
-    if (world.state.score > best) {
-      best = world.state.score;
-      saveBest(best);
-    }
-    announce(`Game over. Score ${world.state.score}. Best ${best}.`);
-  }
-
-  function handleActions() {
-    const actions = input.takeActions();
-    if (actions & ACTION_CONFIRM && (screen === SCREEN_TITLE || screen === SCREEN_OVER)) startGame();
-    else if (actions & ACTION_PAUSE && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    } else if (actions & (ACTION_PAUSE | ACTION_CONFIRM) && screen === SCREEN_PAUSED) {
-      screen = SCREEN_PLAY;
-      announce('Playing.');
-    }
-  }
-
-  function step() {
-    if (screen === SCREEN_TITLE) {
-      world.step(STEP, 0, true);
-      return;
-    }
-    const events = world.step(STEP, input.direction(), false);
-    if (events & EVENT_OVER) endGame();
-    else if (events & EVENT_HIT) announce(world.state.lives === 1 ? 'Hit. 1 life left.' : `Hit. ${world.state.lives} lives left.`);
-  }
-
-  function frame(now) {
-    requestAnimationFrame(frame);
-    accumulator += Math.min((now - last) / 1000, MAX_FRAME);
-    last = now;
-    handleActions();
-    if (screen === SCREEN_TITLE || screen === SCREEN_PLAY) {
-      while (accumulator >= STEP && (screen === SCREEN_TITLE || screen === SCREEN_PLAY)) {
-        step();
-        accumulator -= STEP;
-      }
-    } else {
-      accumulator = 0;
-    }
-    renderer.draw(world.state, screen, best);
-  }
-
-  // Leaving the tab pauses a running game rather than letting blocks fall unseen.
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && screen === SCREEN_PLAY) {
-      screen = SCREEN_PAUSED;
-      announce('Paused.');
-    }
-  });
-
-  announce('Block Dodger. Press Space or click to start.');
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.033, (now - last) / 1000 || 0.016);
+  last = now;
+  if (!shot || shot === 'live') updateGame(G, dt);
+  drawGame(ctx, G);
+  input.endFrame();
+  window.__ready = true;
   requestAnimationFrame(frame);
 }
-
-if (shot) runShot(shot);
-else runGame();
+requestAnimationFrame(frame);
