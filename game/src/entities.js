@@ -186,6 +186,7 @@ export function spawnPoliceCar(G, rng) {
 }
 
 export function updatePoliceCar(G, car, dt) {
+  if (car.roadblock) { car.speed = 0; car.sirenPhase += dt * 9; return; }
   const target = G.player.car || G.player;
   const dx = target.x - car.x, dy = target.y - car.y;
   const dist = Math.hypot(dx, dy) || 1;

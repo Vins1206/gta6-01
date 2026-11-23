@@ -37,6 +37,12 @@ export function drawWorld(ctx, G, cam) {
       rect(ctx, bx + ROAD_W - 8, by + ROAD_W - 8, ROAD_PITCH - ROAD_W + 16, ROAD_PITCH - ROAD_W + 16, COLORS.sidewalk);
     }
   }
+  // Beach umbrellas and marina boats sit above sand and water.
+  for (const u of (G.city.umbrellas || [])) if (u.x > x0 && u.x < x1 && u.y > y0 && u.y < y1) {
+    ctx.fillStyle = u.color; ctx.beginPath(); ctx.arc(u.x, u.y, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.beginPath(); ctx.arc(u.x, u.y, 4, 0, 7); ctx.fill();
+  }
+  for (const bt of (G.city.boats || [])) if (bt.x > x0 && bt.x < x1 && bt.y > y0 && bt.y < y1) drawBoat(ctx, bt, G.time);
   for (const b of G.city.buildings) if (b.x + b.w > x0 && b.x < x1 && b.y + b.h > y0 && b.y < y1) drawBuilding(ctx, b);
   for (const p of G.city.palms) if (p.x > x0 && p.x < x1 && p.y > y0 && p.y < y1) drawPalm(ctx, p.x, p.y, p.s);
   for (const l of G.city.lamps) if (l.x > x0 && l.x < x1 && l.y > y0 && l.y < y1) { ctx.fillStyle = '#5b5f66'; ctx.fillRect(l.x - 2, l.y - 2, 4, 4); ctx.fillStyle = '#ffe9a3'; ctx.beginPath(); ctx.arc(l.x, l.y, 3, 0, 7); ctx.fill(); }
@@ -62,6 +68,29 @@ function drawRoads(ctx, x0, y0, x1, y1) {
   }
 }
 
+export function drawBoat(ctx, bt, time) {
+  ctx.save(); ctx.translate(bt.x, bt.y + Math.sin(time * 1.3 + bt.x) * 2); ctx.rotate(bt.angle); ctx.scale(bt.s, bt.s);
+  ctx.fillStyle = 'rgba(10,60,80,0.35)'; ctx.beginPath(); ctx.ellipse(3, 5, 30, 10, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = bt.hue;
+  ctx.beginPath(); ctx.moveTo(-28, 0); ctx.lineTo(-16, -8); ctx.lineTo(20, -8); ctx.lineTo(30, 0); ctx.lineTo(20, 8); ctx.lineTo(-16, 8); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(-6, -5, 16, 10);
+  ctx.fillStyle = '#118ab2'; ctx.fillRect(0, -3, 6, 6);
+  ctx.restore();
+}
+
+// Warm late-afternoon grade over the whole frame: golden top light, soft
+// vignette. Drawn in screen space after the world, before the HUD.
+export function drawSunsetGrade(ctx, w, h) {
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(255,170,60,0.10)');
+  grad.addColorStop(0.55, 'rgba(255,120,80,0.03)');
+  grad.addColorStop(1, 'rgba(40,16,80,0.12)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+  const vig = ctx.createRadialGradient(w / 2, h / 2, h * 0.55, w / 2, h / 2, h * 1.05);
+  vig.addColorStop(0, 'rgba(20,8,40,0)'); vig.addColorStop(1, 'rgba(20,8,40,0.22)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+}
+
 function drawBuilding(ctx, b) {
   ctx.fillStyle = COLORS.roofShadow; ctx.fillRect(b.x + 9, b.y + 11, b.w, b.h);
   rect(ctx, b.x, b.y, b.w, b.h, b.trim);
@@ -75,6 +104,10 @@ function drawBuilding(ctx, b) {
   ctx.fillRect(b.x + b.w / 2 - 16, b.y + b.h / 2 - 10, 32, 20);
   ctx.fillStyle = 'rgba(0,0,0,0.10)';
   for (let i = 0; i < b.floors; i++) ctx.fillRect(b.x + 8, b.y + 10 + i * 13, 5, 5);
+  // Sunlit window strips along the south and east faces.
+  ctx.fillStyle = 'rgba(255,244,190,0.55)';
+  for (let wx = b.x + 14; wx < b.x + b.w - 12; wx += 17) { ctx.fillRect(wx, b.y + b.h - 12, 9, 5); ctx.fillRect(wx, b.y + 7, 9, 4); }
+  for (let wy = b.y + 16; wy < b.y + b.h - 16; wy += 17) ctx.fillRect(b.x + b.w - 12, wy, 5, 9);
   if (b.shop) {
     rect(ctx, b.x + 8, b.y + b.h - 24, b.w - 16, 17, '#263238');
     ctx.fillStyle = '#ffd166'; ctx.font = '700 10px system-ui, sans-serif'; ctx.textAlign = 'center';

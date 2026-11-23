@@ -5,8 +5,9 @@
 // screenshots/ from beside this file to /output and writes /output/dossier.json, the summary the
 // judge reads, with the vendored make.fun library. The game itself: a city to explore on foot
 // and by car, traffic and pedestrians, cars to steal, a five-star wanted level with police who
-// respond, a five-chapter story with dialog, combat, a HUD with a live minimap, a start screen
-// and an auto-save — see README.md and game/src/ for the systems, one file per job.
+// respond (cruisers, officers on foot and roadblocks at four stars), a six-chapter story with
+// dialog, combat, a Checkpoint Rush street race, 20 hidden film-reel collectibles, taxi fares,
+// a HUD with a live minimap, a start screen and an auto-save — see README.md and game/src/.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:

@@ -1,4 +1,4 @@
-// Story missions for Solmaris Heat — an original five-chapter story.
+// Story missions for Solmaris Heat — an original six-chapter story.
 // Mara Vela, a courier who swore she was out, takes one last week of jobs
 // from fixer Lina Corvo across the city of Solmaris.
 
@@ -85,6 +85,22 @@ export const MISSIONS = [
       ['Lina', 'Then arrive famous. It pays the same.'],
     ],
     doneText: 'Delivered. Mara Vela is out — this time she means it.',
+  },
+  {
+    id: 'one-more-sunset',
+    title: 'Chapter 6 — One More Sunset',
+    giver: 'Lina Corvo',
+    objective: 'Pick up Lina and drive her to the Coral Row lookout',
+    target: { x: 468, y: 468 },
+    needsCar: true,
+    timer: 120,
+    reward: 900,
+    dialog: [
+      ['Lina', 'One more ride, Mara. Not a job — a sunset.'],
+      ['Mara', 'You are paying me nine hundred to watch a sunset?'],
+      ['Lina', 'I am paying you to finally stop running. Drive.'],
+    ],
+    doneText: 'The sun goes down on Solmaris. Mara stays. THE END — free roam is yours.',
   },
 ];
 

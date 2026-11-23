@@ -55,6 +55,14 @@ if (shot) {
     putPlayerInCar(1080, 1252, 0, 215, '#3a86ff');
     addPolice(1470, 1225, 0); addPolice(1420, 1290, 0.1); addPolice(1560, 1330, -0.3);
     G.wanted = 4; G.heatCool = 12;
+  } else if (shot === 'race') {
+    G.missionIndex = 6; assignMission(G);
+    G.money = 3900; G.rep = 44; G.packagesFound = 7;
+    G.packages.slice(0, 7).forEach((p) => { p.taken = true; });
+    putPlayerInCar(1480, 890, 0, 205, '#8338ec');
+    addPolice(1290, 850, 0);
+    G.race.active = true; G.race.gate = 2; G.race.timeLeft = 74;
+    G.wanted = 1; G.heatCool = 12;
   } else if (shot === 'beach') {
     G.missionIndex = 4; assignMission(G);
     G.missionTimer = 96; G.money = 3150; G.rep = 31;
@@ -79,7 +87,7 @@ if (shot) {
       cop.x = car.x + dx; cop.y = car.y + dy; cop.angle = 0; cop.speed = 150; cop.dead = false;
     });
     car.speed = shot === 'cover' ? 165 : 195;
-    G.wanted = shot === 'cover' ? 3 : shot === 'chase' ? 4 : 2;
+    G.wanted = shot === 'cover' ? 3 : shot === 'chase' ? 4 : shot === 'race' ? 1 : 2;
     G.heatCool = 12; G.bustMeter = 0; G.toast = ''; G.toastT = 0;
     G.player.health = 100;
   }

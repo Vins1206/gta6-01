@@ -5,7 +5,8 @@ import { VIEW_W, VIEW_H, WORLD_W, WORLD_H, SAVE_KEY } from './config.js';
 import { buildCity, collideRects, pointInRects, isWater, isOnRoad, makeRng } from './city.js';
 import { makeCar, spawnParkedCars, spawnTrafficCar, spawnPedsAround, updateTrafficCar, updatePed, scarePeds, wantedPoliceCount, spawnPoliceCar, updatePoliceCar, makeOfficer, updateOfficer } from './entities.js';
 import { MISSIONS, missionMarker } from './missions.js';
-import { drawWorld, drawCar, drawPerson } from './render.js';
+import { drawWorld, drawCar, drawPerson, drawSunsetGrade } from './render.js';
+import { scatterPackages, newRaceState, updateActivities, raceTarget, RACE_START } from './activities.js';
 import { drawHUD, drawDialog, drawStartScreen, drawEndScreen, drawObjectiveArrow } from './hud.js';
 import { SoundBank } from './audio.js';
 
@@ -22,6 +23,7 @@ export function createGame(input, seed = 20261117) {
     dialog: null, dialogQueue: [], storyDone: false,
     toast: '', toastT: 0, taxiTarget: null, taxiCooldown: 8,
     crates: [], tracers: [], sparks: [], cam: { x: 0, y: 0, w: VIEW_W, h: VIEW_H },
+    packages: [], packagesFound: 0, race: newRaceState(), roadblockCd: 0,
     muted: false, endKind: null, saveT: 0,
   };
   G.cars = spawnParkedCars(rng);
@@ -29,6 +31,7 @@ export function createGame(input, seed = 20261117) {
   const first = makeCar(612, 494, 0, 'parked', rng); first.color = '#e63946'; G.cars.push(first);
   for (let i = 0; i < 10; i++) { const c = spawnTrafficCar(G, rng); if (c) G.cars.push(c); }
   G.peds = spawnPedsAround(G, rng, 22);
+  G.packages = scatterPackages(G);
   for (let i = 0; i < 8; i++) G.crates.push(newSideCrate(G));
   try { G.hasSave = !!localStorage.getItem(SAVE_KEY); } catch { G.hasSave = false; }
   return G;
@@ -74,6 +77,8 @@ function saveGame(G) {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money: G.money, rep: G.rep, missionIndex: G.missionIndex,
       x: G.player.x, y: G.player.y, storyDone: G.storyDone,
+      packagesFound: G.packagesFound, raceBest: G.race.best,
+      packagesTaken: G.packages.map((p, i) => (p.taken ? i : -1)).filter((i) => i >= 0),
     }));
     G.hasSave = true;
   } catch { /* storage unavailable: the game still plays */ }
@@ -84,6 +89,8 @@ function loadGame(G) {
     if (!s) return;
     G.money = s.money ?? 250; G.rep = s.rep ?? 0; G.missionIndex = s.missionIndex ?? 0;
     G.storyDone = !!s.storyDone;
+    G.packagesFound = s.packagesFound ?? 0; G.race.best = s.raceBest ?? 0;
+    for (const i of s.packagesTaken || []) if (G.packages[i]) G.packages[i].taken = true;
     if (!G.storyDone) { G.player.x = s.x ?? G.player.x; G.player.y = s.y ?? G.player.y; }
   } catch { /* corrupted save ignored */ }
 }
@@ -148,6 +155,13 @@ function stepPlay(G, dt) {
   G.peds = G.peds.filter((q) => Math.hypot(q.x - p.x, q.y - p.y) < 1500);
   updatePolice(G, dt);
   updateCombat(G, dt);
+  updateActivities(G, dt, {
+    onPackage: (n) => { G.sound.pickup(); showToast(G, 'Hidden film reel ' + n + '/20 — +$25'); if (n === 20) { G.money += 500; showToast(G, 'ALL 20 REELS FOUND! Collector bonus +$500'); } },
+    onRaceStart: () => { G.sound.missionDone(); showToast(G, 'CHECKPOINT RUSH! Hit every green gate — each adds 6s.'); },
+    onGate: (n, total) => { G.sound.pickup(); showToast(G, 'Gate ' + n + '/' + total + ' — +6s'); },
+    onRaceFail: () => { G.sound.busted(); showToast(G, 'Checkpoint Rush failed. The flag on Sunset Strip is waiting.'); },
+    onRaceWin: (secs) => { const pay = 600; G.money += pay; G.rep += 8; G.sound.cash(); showToast(G, 'RUSH WON in ' + secs + 's! +$' + pay + ' — best time saved.'); saveGame(G); },
+  });
   updatePickupsAndTaxi(G, dt);
   updateMission(G, dt);
   updateWanted(G, dt);
@@ -268,6 +282,22 @@ function updatePolice(G, dt) {
   const want = wantedPoliceCount(G.wanted);
   const cops = G.cars.filter((c) => c.kind === 'police' && !c.dead);
   if (cops.length < want && G.rng() < dt * 1.6) G.cars.push(spawnPoliceCar(G, G.rng));
+  // At four stars the Policia sets a roadblock across the road ahead.
+  G.roadblockCd -= dt;
+  if (G.wanted >= 4 && G.player.car && G.roadblockCd <= 0 && !cops.some((c) => c.roadblock)) {
+    G.roadblockCd = 26;
+    const ahead = 330;
+    const bx = G.player.x + Math.cos(G.player.car.angle) * ahead;
+    const by = G.player.y + Math.sin(G.player.car.angle) * ahead;
+    for (const off of [-24, 24]) {
+      const rb = spawnPoliceCar(G, G.rng);
+      rb.x = bx + Math.cos(G.player.car.angle + Math.PI / 2) * off;
+      rb.y = by + Math.sin(G.player.car.angle + Math.PI / 2) * off;
+      rb.angle = G.player.car.angle + Math.PI / 2; rb.roadblock = true; rb.speed = 0;
+      if (!isWater(rb.x, rb.y)) G.cars.push(rb);
+    }
+    showToast(G, 'ROADBLOCK AHEAD!');
+  }
   if (cops.length > want && want === 0) for (const c of cops) c.kind = 'traffic';
   // Officers on foot pour out of nearby cruisers when the player is on foot.
   if (!p.car && G.wanted >= 2 && G.officers.filter((o) => !o.dead).length < 3) {
@@ -446,6 +476,24 @@ export function drawGame(ctx, G) {
     else { const mark = missionMarker(G.mission, G); if (mark) drawBeacon(ctx, G, mark.x, mark.y, '#ffd60a'); }
   }
   if (G.taxiTarget) drawBeacon(ctx, G, G.taxiTarget.x, G.taxiTarget.y, '#00e5ff');
+  // Hidden film reels: little golden canisters that bob and glint.
+  for (const p of G.packages) {
+    if (p.taken) continue;
+    const bob = Math.sin(G.time * 3.4 + p.phase) * 3;
+    ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = '#7a5200'; ctx.beginPath(); ctx.arc(p.x, p.y + bob, 4.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff8d6'; ctx.fillRect(p.x - 1, p.y + bob - 8, 2, 4);
+  }
+  // Checkpoint Rush: checkered start flag, and the live gate when racing.
+  if (!G.race.active) {
+    ctx.fillStyle = '#222'; ctx.fillRect(RACE_START.x - 2, RACE_START.y - 34, 4, 34);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j) % 2 ? '#fff' : '#111'; ctx.fillRect(RACE_START.x + 2 + i * 7, RACE_START.y - 34 + j * 7, 7, 7); }
+    ctx.fillStyle = 'rgba(255,214,10,0.9)'; ctx.font = '700 10px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('RUSH — R', RACE_START.x, RACE_START.y + 16);
+  } else {
+    const gate = raceTarget(G);
+    if (gate) drawBeacon(ctx, G, gate.x, gate.y, '#06d6a0');
+  }
   for (const c of G.cars) if (c !== G.player.car) drawCar(ctx, c, G.time);
   for (const ped of G.peds) drawPerson(ctx, ped, G.time);
   for (const o of G.officers) drawPerson(ctx, o, G.time);
@@ -462,6 +510,7 @@ export function drawGame(ctx, G) {
   for (const t of G.tracers) { ctx.strokeStyle = 'rgba(255,230,120,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); }
   for (const s of G.sparks) { ctx.fillStyle = s.color; ctx.fillRect(s.x - 2, s.y - 2, 4, 4); }
   ctx.restore();
+  drawSunsetGrade(ctx, VIEW_W, VIEW_H);
   drawObjectiveArrow(ctx, G, cam);
   drawHUD(ctx, G);
   drawDialog(ctx, G);

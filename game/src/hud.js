@@ -5,6 +5,7 @@ import { VIEW_W, VIEW_H, WORLD_W, WORLD_H } from './config.js';
 import { isWater, roadCentersX, roadCentersY } from './city.js';
 import { roundRect } from './render.js';
 import { missionMarker } from './missions.js';
+import { raceTarget, RACE_GATES } from './activities.js';
 
 export function drawMinimap(ctx, G) {
   const w = 218, h = 146, x = VIEW_W - w - 16, y = VIEW_H - h - 16;
@@ -44,6 +45,7 @@ export function drawHUD(ctx, G) {
   ctx.font = '600 13px system-ui'; ctx.fillStyle = '#ffd166';
   ctx.fillText('$ ' + Math.floor(G.money).toLocaleString('en-US'), 30, 66);
   ctx.fillStyle = '#9bf00b'; ctx.fillText('REP ' + G.rep, 130, 66);
+  ctx.fillStyle = '#ffd60a'; ctx.fillText('🎞 ' + G.packagesFound + '/20', 215, 66);
   ctx.fillStyle = '#e8e8e8'; ctx.font = '600 12px system-ui';
   ctx.fillText(G.player.car ? 'Driving: ' + G.player.car.model.name : 'On foot — E enters a car', 30, 88);
   // Health bar.
@@ -75,6 +77,13 @@ export function drawHUD(ctx, G) {
       ctx.fillStyle = G.missionTimer < 25 ? '#ef476f' : '#ffd166'; ctx.font = '800 15px system-ui';
       ctx.fillText('⏱ ' + Math.ceil(G.missionTimer) + 's', VIEW_W / 2, 93);
     }
+  }
+  // Checkpoint Rush banner, under the mission banner.
+  if (G.race && G.race.active) {
+    panel(ctx, VIEW_W / 2 - 190, 108, 380, 40);
+    ctx.fillStyle = '#06d6a0'; ctx.font = '800 14px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('🏁 CHECKPOINT RUSH — Gate ' + (G.race.gate + 1) + '/' + RACE_GATES.length + ' · ⏱ ' + Math.ceil(G.race.timeLeft) + 's', VIEW_W / 2, 134);
+    ctx.textAlign = 'left';
   }
   // Bottom-left: context help / speed.
   panel(ctx, 16, VIEW_H - 64, 430, 48);
@@ -113,7 +122,7 @@ export function drawDialog(ctx, G) {
 }
 
 export function drawObjectiveArrow(ctx, G, cam) {
-  const mark = missionMarker(G.mission, G);
+  const mark = (G.race && G.race.active && raceTarget(G)) || missionMarker(G.mission, G);
   if (!mark || G.state !== 'play') return;
   const sx = G.player.x - cam.x, sy = G.player.y - cam.y;
   const dx = mark.x - G.player.x, dy = mark.y - G.player.y;
@@ -158,6 +167,8 @@ export function drawStartScreen(ctx, G) {
   ctx.fillText('An original open-world city of sun, sirens and second chances', VIEW_W / 2, 188);
   ctx.font = '600 15px system-ui'; ctx.fillStyle = '#fff';
   ctx.fillText('Explore on foot and by car · Steal cars · Run missions · Shake the Policia Solmaris', VIEW_W / 2, 222);
+  ctx.font = '600 13.5px system-ui'; ctx.fillStyle = '#ffe9a3';
+  ctx.fillText('Plus: Checkpoint Rush street races · 20 hidden film reels · taxi fares · police roadblocks', VIEW_W / 2, 246);
   ctx.fillStyle = 'rgba(10,14,28,0.82)'; roundRect(ctx, 390, 552, 500, 118, 14); ctx.fill();
   ctx.fillStyle = '#ffd166'; ctx.font = '800 21px system-ui';
   ctx.fillText(G.hasSave ? 'ENTER — New story      C — Continue (saved)' : 'ENTER — Start Mara\u2019s story', VIEW_W / 2, 592);

@@ -82,7 +82,18 @@ export function buildCity(seed = 20261117) {
     if (!isWater(x + 62, y)) lamps.push({ x: x + ROAD_W / 2 + 6, y });
     if (!isWater(x - 62, y + 90)) lamps.push({ x: x - ROAD_W / 2 - 6, y: y + 90 });
   }
-  return { buildings, palms, lamps, parks };
+  // Marina boats anchored in the bay and umbrellas dotted along the beach.
+  const boats = [];
+  for (let i = 0; i < 9; i++) {
+    const bx = 3120 + rng() * 620, by = 1980 + rng() * 460;
+    if (isWater(bx, by)) boats.push({ x: bx, y: by, angle: rng() * 6.28, hue: ['#ffffff', '#ff6b6b', '#ffd166', '#4cc9f0'][i % 4], s: 0.8 + rng() * 0.7 });
+  }
+  const umbrellas = [];
+  for (let i = 0; i < 16; i++) {
+    const ux = 2880 + rng() * 260, uy = 1700 + rng() * 700;
+    if (isBeach(ux, uy)) umbrellas.push({ x: ux, y: uy, color: ['#ef476f', '#ffd166', '#06d6a0', '#118ab2'][i % 4] });
+  }
+  return { buildings, palms, lamps, parks, boats, umbrellas };
 }
 
 export function collideRects(entity, rects, radius) {
