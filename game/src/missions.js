@@ -1,4 +1,4 @@
-// Story missions for Solmaris Heat — an original five-chapter story.
+// Story missions for Solmaris Heat — an original six-chapter story.
 // Mara Vela, a courier who swore she was out, takes one last week of jobs
 // from fixer Lina Corvo across the city of Solmaris.
 
@@ -86,11 +86,29 @@ export const MISSIONS = [
     ],
     doneText: 'Delivered. Mara Vela is out — this time she means it.',
   },
+  {
+    id: 'one-more-sunset',
+    title: 'Chapter 6 — One More Sunset',
+    giver: 'Lina Corvo',
+    objective: 'One last run: reach Pier Nueve before the timer ends',
+    target: { x: 3160, y: 1810 },
+    needsCar: true,
+    timer: 120,
+    reward: 900,
+    dialog: [
+      ['Lina', 'One more sunset, Mara. Then I swear you are free.'],
+      ['Mara', 'You swore that yesterday. The sun keeps receipts.'],
+      ['Lina', 'Pier Nueve, two minutes. Make it golden.'],
+    ],
+    doneText: 'One more sunset, delivered. Mara watches it from the pier, free at last.',
+  },
 ];
 
 export const SIDE_ACTIVITIES = [
   'Taxi fares: stop near a waving pedestrian in a car to earn cash.',
   'Street crates glow gold — drive or walk through them for $40.',
+  'Checkpoint Rush: drive through the start gate for an 8-gate timed race, $600 to win.',
+  'Hidden film reels: 20 scattered over Solmaris, $25 each and $500 for the full set.',
   'Your wanted level cools down when police lose sight of you.',
 ];
 

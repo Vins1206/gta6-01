@@ -14,9 +14,13 @@ A complete top-down open world in one static page — no build step, no network 
 - **On foot and by car** — walk, run, steal any of six car models (Coral Coupe, Palmera Sedan, Dune Buggy, Cargo Van, Sol Taxi, Reef Pickup), each with its own speed, acceleration and grip; handbrake drifts included.
 - **Traffic & pedestrians** — lane-following traffic that brakes for you, turns at intersections and includes taxis; pedestrians stroll, chat-wait and flee from gunfire and speeding cars.
 - **Wanted level & police** — a five-star heat system. Police cruisers hunt you, officers pour out on foot and grab you; heat cools only when nobody sees you. Get caught and you are **BUSTED**; get hurt and you wake up **WASTED** at Hospital del Mar.
-- **A five-chapter story** — Coffee at Coral Row, The Harbor Run, Three Lost Crates, Shake the Heat, and The Sunset Delivery, with dialog, timers, beacons and cash rewards.
+- **A six-chapter story** — Coffee at Coral Row, The Harbor Run, Three Lost Crates, Shake the Heat, The Sunset Delivery, and One More Sunset ($900, 120-second timer), with dialog, timers, beacons and cash rewards.
 - **Combat** — mouse-aimed punches and shooting with tracers and sparks; crimes raise your heat in front of witnesses.
+- **Checkpoint Rush** — an 8-gate timed race (press R in a car, or drive through the start gate): +6 seconds per gate, $600 to win, best time saved, with a race banner and a race-aware objective arrow.
+- **Hidden film reels** — 20 reels scattered over the city, $25 each plus a $500 full-set bonus, tracked on the HUD.
+- **Police roadblocks** — at wanted level 4 or higher, two cruisers park across the road ahead of you.
 - **Side money** — taxi fares from waving pedestrians and golden street crates scattered over the city.
+- **Sunset polish** — nine marina boats, sixteen beach umbrellas, sunlit window strips and a golden sunset grade with vignette over the whole city.
 - **HUD & minimap** — health, cash, reputation, speedometer, wanted stars with a heat-cooling readout, mission banner with timer, objective arrow with distance, and a live minimap showing missions and flashing police.
 - **Start screen, pause, and save** — progress, cash and reputation auto-save to the browser and can be continued.
 - **Sound** — a tiny WebAudio synth: engine hum that follows your speed, sirens, shots, crashes, pickups and mission stingers. No audio files.
@@ -31,6 +35,7 @@ A complete top-down open world in one static page — no build step, no network 
 | Space | Handbrake |
 | Mouse + click / F | Aim, punch and shoot |
 | P | Pause |
+| R | Start Checkpoint Rush (in a car) |
 | M | Mute |
 | Enter / C | Start / continue on the title screen |
 
@@ -54,7 +59,8 @@ mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
 - `game/src/city.js` — seeded city generation, roads, collisions, sea & beach
 - `game/src/entities.js` — traffic, parked cars, pedestrians, police & officers
-- `game/src/missions.js` — the five-chapter story, dialog and objectives
+- `game/src/missions.js` — the six-chapter story, dialog and objectives
+- `game/src/activities.js` — Checkpoint Rush race, hidden film reels and police roadblocks
 - `game/src/game.js` — player, driving, combat, wanted system, taxi fares, saving
 - `game/src/render.js` — world, building, car and people rendering
 - `game/src/hud.js` — HUD, minimap, menus and dialog boxes

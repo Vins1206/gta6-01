@@ -5,6 +5,7 @@ import { VIEW_W, VIEW_H, WORLD_W, WORLD_H } from './config.js';
 import { isWater, roadCentersX, roadCentersY } from './city.js';
 import { roundRect } from './render.js';
 import { missionMarker } from './missions.js';
+import { raceTarget, REELS } from './activities.js';
 
 export function drawMinimap(ctx, G) {
   const w = 218, h = 146, x = VIEW_W - w - 16, y = VIEW_H - h - 16;
@@ -46,6 +47,17 @@ export function drawHUD(ctx, G) {
   ctx.fillStyle = '#9bf00b'; ctx.fillText('REP ' + G.rep, 130, 66);
   ctx.fillStyle = '#e8e8e8'; ctx.font = '600 12px system-ui';
   ctx.fillText(G.player.car ? 'Driving: ' + G.player.car.model.name : 'On foot — E enters a car', 30, 88);
+  if (G.activities) { ctx.fillStyle = '#ffd60a'; ctx.font = '700 12px system-ui'; ctx.fillText('FILM REELS ' + G.activities.reelsTaken.length + '/' + REELS.length, 190, 66); }
+  // Checkpoint Rush banner, under the mission banner.
+  if (G.activities && G.activities.race.active) {
+    const r = G.activities.race;
+    const label = 'CHECKPOINT RUSH — Gate ' + (r.gate + 1) + '/8 · ' + Math.ceil(r.timer) + 's' + (r.best ? ' · Best ' + r.best + 's' : '');
+    ctx.font = '800 14px system-ui';
+    const rw = Math.min(560, ctx.measureText(label).width + 36);
+    panel(ctx, (VIEW_W - rw) / 2, 108, rw, 34);
+    ctx.fillStyle = '#ffd60a'; ctx.textAlign = 'center';
+    ctx.fillText(label, VIEW_W / 2, 131); ctx.textAlign = 'left';
+  }
   // Health bar.
   ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(30, 94, 150, 8);
   ctx.fillStyle = p.health > 30 ? '#06d6a0' : '#ef476f'; ctx.fillRect(30, 94, Math.max(0, p.health) * 1.5, 8);
@@ -113,7 +125,7 @@ export function drawDialog(ctx, G) {
 }
 
 export function drawObjectiveArrow(ctx, G, cam) {
-  const mark = missionMarker(G.mission, G);
+  const mark = raceTarget(G) || missionMarker(G.mission, G);
   if (!mark || G.state !== 'play') return;
   const sx = G.player.x - cam.x, sy = G.player.y - cam.y;
   const dx = mark.x - G.player.x, dy = mark.y - G.player.y;

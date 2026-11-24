@@ -8,6 +8,7 @@ import { MISSIONS, missionMarker } from './missions.js';
 import { drawWorld, drawCar, drawPerson } from './render.js';
 import { drawHUD, drawDialog, drawStartScreen, drawEndScreen, drawObjectiveArrow } from './hud.js';
 import { SoundBank } from './audio.js';
+import { createActivities, updateActivities, drawActivities, startRace } from './activities.js';
 
 export function createGame(input, seed = 20261117) {
   const rng = makeRng(seed);
@@ -23,6 +24,7 @@ export function createGame(input, seed = 20261117) {
     toast: '', toastT: 0, taxiTarget: null, taxiCooldown: 8,
     crates: [], tracers: [], sparks: [], cam: { x: 0, y: 0, w: VIEW_W, h: VIEW_H },
     muted: false, endKind: null, saveT: 0,
+    activities: createActivities(),
   };
   G.cars = spawnParkedCars(rng);
   // A friendly first car waits on the avenue east of the spawn, unlocked.
@@ -74,6 +76,7 @@ function saveGame(G) {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       money: G.money, rep: G.rep, missionIndex: G.missionIndex,
       x: G.player.x, y: G.player.y, storyDone: G.storyDone,
+      reelsTaken: G.activities.reelsTaken, raceBest: G.activities.race.best,
     }));
     G.hasSave = true;
   } catch { /* storage unavailable: the game still plays */ }
@@ -84,6 +87,8 @@ function loadGame(G) {
     if (!s) return;
     G.money = s.money ?? 250; G.rep = s.rep ?? 0; G.missionIndex = s.missionIndex ?? 0;
     G.storyDone = !!s.storyDone;
+    if (Array.isArray(s.reelsTaken)) G.activities.reelsTaken = s.reelsTaken;
+    if (s.raceBest) G.activities.race.best = s.raceBest;
     if (!G.storyDone) { G.player.x = s.x ?? G.player.x; G.player.y = s.y ?? G.player.y; }
   } catch { /* corrupted save ignored */ }
 }
@@ -136,7 +141,7 @@ function stepPlay(G, dt) {
   for (const c of G.cars) {
     if (c.dead) continue;
     if (c.kind === 'traffic') { traffic++; updateTrafficCar(G, c, dt); collideCarWorld(G, c, false); }
-    if (c.kind === 'police') { updatePoliceCar(G, c, dt); collideCarWorld(G, c, false); }
+    if (c.kind === 'police') { if (!c.roadblock) updatePoliceCar(G, c, dt); collideCarWorld(G, c, false); }
   }
   if (traffic < 13 && G.rng() < dt * 1.4) { const c = spawnTrafficCar(G, G.rng); if (c) G.cars.push(c); }
   G.cars = G.cars.filter((c) => {
@@ -149,6 +154,8 @@ function stepPlay(G, dt) {
   updatePolice(G, dt);
   updateCombat(G, dt);
   updatePickupsAndTaxi(G, dt);
+  if (G.input.justPressed('KeyR') && G.player.car) startRace(G);
+  updateActivities(G, dt);
   updateMission(G, dt);
   updateWanted(G, dt);
   // Effects decay.
@@ -430,6 +437,7 @@ export function drawGame(ctx, G) {
   const cam = G.cam;
   ctx.save(); ctx.translate(-cam.x, -cam.y);
   drawWorld(ctx, G, cam);
+  drawActivities(ctx, G);
   // Side crates.
   for (const c of G.crates) {
     ctx.fillStyle = '#b08900'; ctx.fillRect(c.x - 9, c.y - 9 + Math.sin(G.time * 3 + c.phase) * 2, 18, 18);
@@ -462,6 +470,13 @@ export function drawGame(ctx, G) {
   for (const t of G.tracers) { ctx.strokeStyle = 'rgba(255,230,120,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); }
   for (const s of G.sparks) { ctx.fillStyle = s.color; ctx.fillRect(s.x - 2, s.y - 2, 4, 4); }
   ctx.restore();
+  // Sunset grade: warm golden light with a soft vignette over the world.
+  const grade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  grade.addColorStop(0, 'rgba(255,170,60,0.10)'); grade.addColorStop(1, 'rgba(255,110,60,0.16)');
+  ctx.fillStyle = grade; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const vig = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.42, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.95);
+  vig.addColorStop(0, 'rgba(20,8,0,0)'); vig.addColorStop(1, 'rgba(20,8,0,0.34)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawObjectiveArrow(ctx, G, cam);
   drawHUD(ctx, G);
   drawDialog(ctx, G);

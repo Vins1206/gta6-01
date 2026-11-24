@@ -27,6 +27,24 @@ export function drawWorld(ctx, G, cam) {
     const wx = 3050 + ((i * 173) % 720), wy = 1850 + ((i * 211) % 620);
     if (isWater(wx, wy)) ctx.fillRect(wx + Math.sin(G.time * 1.4 + i) * 6, wy, 22, 3);
   }
+  // Marina boats: nine little hulls bobbing on the water.
+  for (let i = 0; i < 9; i++) {
+    const bx = 3180 + (i % 3) * 190, by = 1980 + Math.floor(i / 3) * 190 + Math.sin(G.time * 1.2 + i) * 4;
+    if (bx > x0 && bx < x1 && by > y0 && by < y1 && isWater(bx, by)) {
+      ctx.fillStyle = i % 2 ? '#f4f1de' : '#ef6f6c'; ctx.fillRect(bx - 20, by - 7, 40, 14);
+      ctx.fillStyle = '#263238'; ctx.fillRect(bx - 4, by - 16, 8, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(bx + 6, by - 3, 10, 3);
+    }
+  }
+  // Beach umbrellas: sixteen bright dots of shade along the sand.
+  for (let i = 0; i < 16; i++) {
+    const ux = 2880 + (i * 53) % 300, uy = 1660 + i * 52;
+    if (ux > x0 && ux < x1 && uy > y0 && uy < y1) {
+      ctx.fillStyle = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2'][i % 4];
+      ctx.beginPath(); ctx.arc(ux, uy, 11, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = '#7a5230'; ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux, uy + 9); ctx.stroke();
+    }
+  }
   // Parks.
   for (const p of G.city.parks) { if (p.x + p.w > x0 && p.x < x1 && p.y + p.h > y0 && p.y < y1) { rect(ctx, p.x, p.y, p.w, p.h, COLORS.park); rect(ctx, p.x + 16, p.y + 16, p.w - 32, p.h - 32, '#5db364'); } }
   drawRoads(ctx, x0, y0, x1, y1);
@@ -73,6 +91,10 @@ function drawBuilding(ctx, b) {
   ctx.fillRect(b.x + b.w - 44, b.y + b.h - 34 - (s % 20), 24, 16);
   ctx.fillStyle = 'rgba(255,255,255,0.28)';
   ctx.fillRect(b.x + b.w / 2 - 16, b.y + b.h / 2 - 10, 32, 20);
+  // Sunlit window strips catching the sunset on the facade.
+  ctx.fillStyle = 'rgba(255,214,110,0.42)';
+  for (let i = 0; i < 3; i++) ctx.fillRect(b.x + 10 + i * 22 + (s % 7), b.y + 8, 12, 4);
+  ctx.fillRect(b.x + 10, b.y + b.h - 14, b.w - 20, 3);
   ctx.fillStyle = 'rgba(0,0,0,0.10)';
   for (let i = 0; i < b.floors; i++) ctx.fillRect(b.x + 8, b.y + 10 + i * 13, 5, 5);
   if (b.shop) {

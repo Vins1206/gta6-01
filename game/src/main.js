@@ -6,6 +6,7 @@
 
 import { createGame, startStory, drawGame, updateGame, assignMission } from './game.js';
 import { makeCar } from './entities.js';
+import { RACE_GATES } from './activities.js';
 import { Input } from './input.js';
 
 const canvas = document.getElementById('game');
@@ -55,6 +56,15 @@ if (shot) {
     putPlayerInCar(1080, 1252, 0, 215, '#3a86ff');
     addPolice(1470, 1225, 0); addPolice(1420, 1290, 0.1); addPolice(1560, 1330, -0.3);
     G.wanted = 4; G.heatCool = 12;
+  } else if (shot === 'race') {
+    G.missionIndex = 5; assignMission(G);
+    G.money = 3400; G.rep = 36;
+    G.activities.reelsTaken = [0, 1, 2, 3, 4];
+    G.activities.race.active = true; G.activities.race.gate = 2; G.activities.race.timer = 41; G.activities.race.best = 74;
+    const g3 = RACE_GATES[2];
+    putPlayerInCar(g3.x - 260, g3.y, 0, 190, '#ffd60a');
+    addPolice(g3.x - 470, g3.y - 40, 0);
+    G.wanted = 2; G.heatCool = 12;
   } else if (shot === 'beach') {
     G.missionIndex = 4; assignMission(G);
     G.missionTimer = 96; G.money = 3150; G.rep = 31;
